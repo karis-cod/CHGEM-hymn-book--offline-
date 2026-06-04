@@ -1,30 +1,41 @@
 {
   "expo": {
-    "name": "chgem-hymn-book",
-    "slug": "chgem-hymn-book",
+    "name": "CHGEM Hymn Book",
+    "slug": "chgem-hymnbook",
+    "scheme": "chgem-hymnbook",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.chgem.hymnbook"
     },
     "android": {
+      "package": "com.chgem.hymnbook",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1A3C5E"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "permissions": []
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1A3C5E",
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain"
+        }
+      ]
+    ],
+    "extra": {
+      "corpusVersion": "2025.1",
+      "supportEmail": "support@chgem.org",
+      "router": {
+        "origin": false
+      }
     }
   }
 }
