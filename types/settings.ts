@@ -1,7 +1,14 @@
 // FILE PATH: types/settings.ts
 // PURPOSE: Settings and theme types for the CHGEM Hymn Book application.
 // All user preferences flow through these types.
-// Never use raw strings for theme or font size — always use these types.
+// Never use raw strings for theme, font size, or language — always use these types.
+//
+// CHANGE FROM PHASE 2:
+//   language field changed from `string` to `AppLanguage` for strict typing.
+//   All existing storageService calls are unaffected — the JSON value is the same.
+
+import type { AppLanguage } from './language';
+import { DEFAULT_LANGUAGE } from './language';
 
 // ─── Font Size ────────────────────────────────────────────────────────────────
 
@@ -60,12 +67,15 @@ export type SortOrder = 'numerical' | 'alphabetical';
  * UserSettings — All user preferences persisted via AsyncStorage.
  * Key: @chgem/settings
  * Never store partial settings — always read/write the full object.
+ *
+ * CHANGE: language is now strictly typed as AppLanguage ('en' | 'yo')
+ * rather than a generic string.
  */
 export interface UserSettings {
   theme: ThemeMode;
   fontSize: FontSizeStep;
-  /** ISO 639-1 language code: 'en' | 'yo' */
-  language: string;
+  /** Strictly typed language code — 'en' | 'yo' */
+  language: AppLanguage;
   showVerseNumbers: boolean;
   keepScreenOn: boolean;
   hapticFeedback: boolean;
@@ -78,7 +88,7 @@ export interface UserSettings {
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'system',
   fontSize: 'md',
-  language: 'en',
+  language: DEFAULT_LANGUAGE,
   showVerseNumbers: true,
   keepScreenOn: false,
   hapticFeedback: true,
@@ -92,8 +102,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
  */
 export const STORAGE_KEYS = {
   FAVOURITES: '@chgem/favourites',
-  RECENTS: '@chgem/recents',
-  SETTINGS: '@chgem/settings',
+  RECENTS:    '@chgem/recents',
+  SETTINGS:   '@chgem/settings',
   DB_VERSION: '@chgem/db_version',
 } as const;
 

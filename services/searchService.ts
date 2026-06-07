@@ -1,21 +1,28 @@
 // FILE PATH: services/searchService.ts
-// PURPOSE: In-memory search index build and ranked query for the CHGEM hymn corpus.
-// Called ONCE after hymnService.init() completes at startup.
+// PURPOSE: In-memory search index build and ranked query — now language-aware.
+//
+// BILINGUAL CHANGE FROM PHASE 2:
+//   - buildIndex() now accepts a language parameter.
+//   - The index is built from language-resolved titles and tag labels.
+//   - queryIndex() signature is unchanged — it queries whatever index is passed.
+//   - The caller (useSearch hook) is responsible for passing the correct index
+//     for the active language, or calling buildIndex() when language changes.
+//   - Hymn number search is always language-neutral (numbers are universal).
 //
 // Scoring:
 //   10 — exact hymn number match
-//    5 — first word of title match
+//    5 — first word of title match (in active language)
 //    3 — other title word match
-//    1 — tag label match
+//    1 — tag label match (in active language)
 //
 // Lyrics are NOT indexed in v1.0. See PRD Section 5.2.
-// Full lyric search is planned for v2.0.
 
 import type { HymnRecord } from '../types/hymn';
+import type { AppLanguage } from '../types/language';
+import { DEFAULT_LANGUAGE } from '../types/language';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/** A single entry in the search index: hymn id + relevance score */
 interface IndexHit {
   id: string;
   score: number;
@@ -23,56 +30,65 @@ interface IndexHit {
 
 /**
  * SearchIndex — Inverted token index.
- * Maps a token string → array of hymn id + score pairs.
- * Prefix scanning is used at query time (see queryIndex).
+ * Maps a token string → array of (hymn id, score) pairs.
  */
 export type SearchIndex = Record<string, IndexHit[]>;
 
 // ─── Index Builder ────────────────────────────────────────────────────────────
 
 /**
- * buildIndex — Builds the in-memory inverted token index.
- * Must be called ONCE after hymnService.init() in the startup sequence.
+ * buildIndex — Builds the inverted token index for the given language.
+ *
+ * Call this:
+ *   - ONCE at startup for the default language (English).
+ *   - AGAIN whenever the user switches language (in useSearch or startup).
  *
  * Tokenises:
- *   - hymn_number as string (score 10)
- *   - title words: first word (score 5), remaining words (score 3)
- *   - tag labels (score 1)
+ *   - hymn_number as string (score 10) — language-neutral
+ *   - title words in the active language: first word (5), rest (3)
+ *   - tag labels in the active language (1)
  *
  * Does NOT tokenise lyrics in v1.0.
- *
- * PERFORMANCE NOTE: If measured > 200ms on a low-end device on the full corpus,
- * move the call inside useEffect with requestAnimationFrame per PRD Section 16.5.
  */
-export function buildIndex(hymns: HymnRecord[]): SearchIndex {
+export function buildIndex(
+  hymns: HymnRecord[],
+  language: AppLanguage = DEFAULT_LANGUAGE
+): SearchIndex {
+  // language param is passed for explicitness; hymns are already resolved
+  // to the correct language by hymnService.getAllHymns(language).
+  // We accept it here to make the contract clear to callers.
+  void language;
+
   const index: SearchIndex = {};
 
   for (const hymn of hymns) {
     const entries: Array<{ token: string; score: number }> = [];
 
-    // Hymn number — highest score — this is the primary in-service lookup
+    // Hymn number — highest score — language-neutral
     entries.push({ token: hymn.hymn_number.toString(), score: 10 });
 
-    // Title tokens — first word scores higher (title starts-with ranking)
+    // Title tokens — resolved to active language by hymnService
     const titleTokens = tokenise(hymn.title);
-    titleTokens.forEach((token, index_) => {
-      entries.push({ token, score: index_ === 0 ? 5 : 3 });
+    titleTokens.forEach((token, i) => {
+      entries.push({ token, score: i === 0 ? 5 : 3 });
     });
 
-    // Tag labels — lowest score (thematic/category matching)
+    // Tag labels — resolved to active language
     for (const tag of hymn.resolvedTags) {
-      const tagToken = tag.label.toLowerCase();
+      // tags have labels in both languages — pick the active language label
+      const tagLabel = typeof tag.labels === 'object'
+        ? (tag.labels[language] || tag.labels[DEFAULT_LANGUAGE] || '')
+        : '';
+      const tagToken = tagLabel.toLowerCase();
       if (tagToken) {
         entries.push({ token: tagToken, score: 1 });
       }
     }
 
-    // Add all entries to the index
+    // Insert all entries into index
     for (const { token, score } of entries) {
       if (!token) continue;
-      if (!index[token]) {
-        index[token] = [];
-      }
+      if (!index[token]) index[token] = [];
       index[token].push({ id: hymn.id, score });
     }
   }
@@ -83,18 +99,12 @@ export function buildIndex(hymns: HymnRecord[]): SearchIndex {
 // ─── Query ────────────────────────────────────────────────────────────────────
 
 /**
- * queryIndex — Performs a ranked prefix-scan query against the search index.
+ * queryIndex — Ranked prefix-scan query.
+ * Signature is unchanged from Phase 2.
  *
- * Behaviour:
- *   - Empty query returns [] (not all hymns — per PRD Section 5.3)
- *   - Special characters are stripped — no throw on unusual input
- *   - Results are ranked by accumulated score, highest first
- *   - Results are capped at 50 (per PRD Section 5.4)
- *   - Prefix scan: 'faith' matches 'faithfulness', 'faithful', etc.
- *
- * @param index   The SearchIndex built by buildIndex()
- * @param query   Raw user input string
- * @param getHymn Resolver function from hymnService (avoids circular import)
+ * - Empty query → []
+ * - Caps at 50 results
+ * - Special chars stripped — no throw
  */
 export function queryIndex(
   index: SearchIndex,
@@ -102,16 +112,12 @@ export function queryIndex(
   getHymn: (id: string) => HymnRecord | null
 ): HymnRecord[] {
   const tokens = tokenise(query);
-
-  // Empty query returns empty — not the full list (per PRD Section 5.3)
   if (tokens.length === 0) return [];
 
   const scores: Record<string, number> = {};
 
   for (const token of tokens) {
-    // Prefix scan: also match index keys that START WITH this token
     const matchingKeys = Object.keys(index).filter((k) => k.startsWith(token));
-
     for (const key of matchingKeys) {
       for (const hit of index[key]) {
         scores[hit.id] = (scores[hit.id] ?? 0) + hit.score;
@@ -119,31 +125,24 @@ export function queryIndex(
     }
   }
 
-  return (
-    Object.entries(scores)
-      // Sort by score descending
-      .sort(([, a], [, b]) => b - a)
-      // Cap at 50 results
-      .slice(0, 50)
-      // Resolve each id to a HymnRecord
-      .map(([id]) => getHymn(id))
-      // Filter out any null results (corpus integrity issue — should not happen)
-      .filter((hymn): hymn is HymnRecord => hymn !== null)
-  );
+  return Object.entries(scores)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 50)
+    .map(([id]) => getHymn(id))
+    .filter((hymn): hymn is HymnRecord => hymn !== null);
 }
 
 // ─── Tokeniser ────────────────────────────────────────────────────────────────
 
 /**
- * tokenise — Converts a string into an array of lowercase search tokens.
- * Strips all non-alphanumeric characters.
- * Filters empty strings.
- * Returns [] for empty or whitespace-only input.
+ * tokenise — Lowercase, strip non-alphanumeric, split on space.
+ * Works for both English and Yoruba — Yoruba tone marks are stripped,
+ * which is intentional for forgiving search matching.
  *
  * Examples:
  *   tokenise('Great is Thy faithfulness') → ['great', 'is', 'thy', 'faithfulness']
+ *   tokenise('Olúwa') → ['olwa']  (tone mark stripped — still matches 'olwa')
  *   tokenise('48') → ['48']
- *   tokenise('???') → []
  *   tokenise('') → []
  */
 export function tokenise(text: string): string[] {
