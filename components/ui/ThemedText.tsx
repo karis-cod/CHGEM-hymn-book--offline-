@@ -1,210 +1,88 @@
 // FILE PATH: components/ui/ThemedText.tsx
-// Phase 1 version — uses system fonts until expo-font is installed in Phase 3
+// PURPOSE: All text in the CHGEM app must use this component.
 
 import React from 'react';
-import { Text, TextProps, StyleSheet } from 'react-native';
-import { useTheme } from '@/context/ThemeContext';
-import { useSettings } from '@/context/SettingsContext';
-import { FontScale } from '@/constants/typography';
+import { Text, StyleSheet } from 'react-native';
+import type { TextProps, TextStyle } from 'react-native';
 
-export type TextVariant =
+import { FONT_SIZE_SCALES } from '../../types/settings';
+
+export type ThemedTextVariant =
   | 'hymnTitle'
   | 'stanzaBody'
   | 'stanzaLabel'
   | 'listTitle'
   | 'listMeta'
   | 'uiLabel'
-  | 'caption';
+  | 'caption'
+  | 'body'
+  | 'sectionHeader'
+  | 'badgeText';
 
-interface ThemedTextProps extends TextProps {
-  variant?: TextVariant;
-  onHeader?: boolean;
-  muted?: boolean;
-  accent?: boolean;
+export interface ThemedTextProps extends TextProps {
+  variant?: ThemedTextVariant;
+  /** Colour override — maps to RN 'color' under the hood */
+  colour?: string;
+  /** Font size override */
+  fontSize?: number;
 }
 
-export function ThemedText({
-  variant = 'uiLabel',
-  onHeader = false,
-  muted = false,
-  accent = false,
+const ThemedText = React.memo(function ThemedText({
+  variant = 'body',
+  colour,
+  fontSize: fontSizeOverride,
   style,
-  ...props
+  children,
+  ...rest
 }: ThemedTextProps) {
-  const { colors } = useTheme();
-  const { fontSize } = useSettings();
-
-  const scale = FontScale[fontSize];
-
-  const sizeMap: Record<TextVariant, number> = {
-    hymnTitle: scale.hymnTitle,
-    stanzaBody: scale.stanzaBody,
-    stanzaLabel: scale.label,
-    listTitle: scale.listTitle,
-    listMeta: scale.meta,
-    uiLabel: scale.label,
-    caption: scale.meta,
-  };
-
-  const colorValue = onHeader
-    ? colors.text.onHeader
-    : muted
-    ? colors.text.muted
-    : accent
-    ? colors.accent.warm
-    : colors.text.primary;
+  const variantStyle = getVariantStyle(variant);
 
   return (
     <Text
       style={[
-        styles.base,
-        { fontSize: sizeMap[variant], color: colorValue },
+        variantStyle,
+        colour !== undefined ? { color: colour } : undefined,
+        fontSizeOverride !== undefined ? { fontSize: fontSizeOverride } : undefined,
         style,
       ]}
-      {...props}
-    />
+      {...rest}
+    >
+      {children}
+    </Text>
   );
-}
-
-const styles = StyleSheet.create({
-  base: {
-    fontFamily: undefined, // System font for now — Inter added in Phase 3
-  },
 });
 
+export default ThemedText;
 
+function getVariantStyle(variant: ThemedTextVariant): TextStyle {
+  const scale = FONT_SIZE_SCALES['md'];
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* // FILE PATH: components/ui/ThemedText.tsx
-// PURPOSE: ALL text in the application uses this component.
-// RULE: Never use raw <Text> anywhere in the app.
-// RULE: Never pass hardcoded fontSize or color to this component.
-
-import React from 'react';
-import { Text, TextProps, StyleSheet } from 'react-native';
-import { useTheme } from '@/context/ThemeContext';
-import { useSettings } from '@/context/SettingsContext';
-import { FontFamilies, FontScale } from '@/constants/typography';
-
-export type TextVariant =
-  | 'hymnTitle'
-  | 'stanzaBody'
-  | 'stanzaLabel'
-  | 'listTitle'
-  | 'listMeta'
-  | 'uiLabel'
-  | 'caption';
-
-interface ThemedTextProps extends TextProps {
-  variant?: TextVariant;
-  onHeader?: boolean;        // true when text sits on the dark blue banner
-  muted?: boolean;           // renders with text.secondary color
-  accent?: boolean;          // renders with accent.primary color
+  switch (variant) {
+    case 'hymnTitle':
+      return { fontSize: scale.hymnTitle, fontWeight: '700', lineHeight: scale.hymnTitle * 1.3 };
+    case 'stanzaBody':
+      return { fontSize: scale.stanzaBody, fontWeight: '400', lineHeight: scale.stanzaBody * 1.6 };
+    case 'stanzaLabel':
+      return { fontSize: scale.label, fontWeight: '700', letterSpacing: 0.8 };
+    case 'listTitle':
+      return { fontSize: scale.listTitle, fontWeight: '500', lineHeight: scale.listTitle * 1.4 };
+    case 'listMeta':
+      return { fontSize: scale.label, fontWeight: '400' };
+    case 'uiLabel':
+      return { fontSize: scale.label, fontWeight: '500' };
+    case 'caption':
+      return { fontSize: 12, fontWeight: '400' };
+    case 'sectionHeader':
+      return { fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' };
+    case 'badgeText':
+      return { fontSize: 12, fontWeight: '700' };
+    case 'body':
+    default:
+      return { fontSize: scale.stanzaBody, fontWeight: '400', lineHeight: scale.stanzaBody * 1.5 };
+  }
 }
 
-export function ThemedText({
-  variant = 'uiLabel',
-  onHeader = false,
-  muted = false,
-  accent = false,
-  style,
-  ...props
-}: ThemedTextProps) {
-  const { colors } = useTheme();
-  const { fontSize } = useSettings();
-
-  const scale = FontScale[fontSize];
-
-  const variantStyles = StyleSheet.create({
-    hymnTitle: {
-      fontSize: scale.hymnTitle,
-      fontFamily: FontFamilies.bold,
-      lineHeight: scale.hymnTitle * 1.25,
-    },
-    stanzaBody: {
-      fontSize: scale.stanzaBody,
-      fontFamily: FontFamilies.regular,
-      lineHeight: scale.stanzaBody * 1.6,
-    },
-    stanzaLabel: {
-      fontSize: scale.label,
-      fontFamily: FontFamilies.bold,
-      lineHeight: scale.label * 1.4,
-      letterSpacing: 0.8,
-      textTransform: 'uppercase' as const,
-    },
-    listTitle: {
-      fontSize: scale.listTitle,
-      fontFamily: FontFamilies.regular,
-      lineHeight: scale.listTitle * 1.4,
-    },
-    listMeta: {
-      fontSize: scale.meta,
-      fontFamily: FontFamilies.regular,
-      lineHeight: scale.meta * 1.4,
-    },
-    uiLabel: {
-      fontSize: scale.label,
-      fontFamily: FontFamilies.regular,
-      lineHeight: scale.label * 1.4,
-    },
-    caption: {
-      fontSize: scale.meta,
-      fontFamily: FontFamilies.italic,
-      lineHeight: scale.meta * 1.4,
-    },
-  });
-
-  const colorStyle = onHeader
-    ? { color: colors.text.onHeader }
-    : muted
-    ? { color: colors.text.muted }
-    : accent
-    ? { color: colors.accent.warm }
-    : { color: colors.text.primary };
-
-  return (
-    <Text
-      style={[variantStyles[variant], colorStyle, style]}
-      {...props}
-    />
-  );
-} */
+// Suppress unused variable — StyleSheet kept for future use
+const _styles = StyleSheet.create({
+  base: { includeFontPadding: false },
+});

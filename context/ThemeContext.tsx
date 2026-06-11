@@ -2,14 +2,14 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
-import { Colors, ColorScheme, ThemeColorPalette } from '@/constants/theme';
+import { ThemeColours, themes } from '@/constants/theme';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 interface ThemeContextValue {
-  colorScheme: ColorScheme;
+  colorScheme: 'light' | 'dark';
   themeMode: ThemeMode;
-  colors: ThemeColorPalette;
+  colors: ThemeColours;
   setThemeMode: (mode: ThemeMode) => void;
 }
 
@@ -23,10 +23,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemColorScheme = useSystemColorScheme() ?? 'light';
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
 
-  const colorScheme: ColorScheme =
+  const colorScheme: 'light' | 'dark' =
     themeMode === 'system' ? systemColorScheme : themeMode;
 
-  const colors: ThemeColorPalette = Colors[colorScheme];
+  const colors: ThemeColours = themes[colorScheme];
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);

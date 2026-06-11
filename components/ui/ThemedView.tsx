@@ -4,7 +4,8 @@
 
 import React from 'react';
 import { View, ViewProps } from 'react-native';
-import { useTheme } from '@/context/ThemeContext';
+import { useColorScheme } from 'react-native';
+import { getThemeColours } from '@/constants/theme';
 
 type BackgroundVariant = 'primary' | 'secondary' | 'card' | 'header';
 
@@ -17,13 +18,14 @@ export function ThemedView({
   style,
   ...props
 }: ThemedViewProps) {
-  const { colors } = useTheme();
+  const scheme = useColorScheme() ?? 'dark';
+  const colours = getThemeColours(scheme === 'dark' ? 'dark' : 'light');
 
   const backgroundColors: Record<BackgroundVariant, string> = {
-    primary: colors.background.primary,
-    secondary: colors.background.secondary,
-    card: colors.background.card,
-    header: colors.background.header,
+    primary: colours.background.primary,
+    secondary: colours.background.secondary,
+    card: colours.background.secondary,
+    header: colours.background.header,
   };
 
   return (

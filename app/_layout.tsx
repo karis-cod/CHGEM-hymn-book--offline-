@@ -1,62 +1,88 @@
 // FILE PATH: app/_layout.tsx
+// PURPOSE: Root layout — wires all contexts, runs startup sequence, controls splash.
 
-import { useEffect } from 'react';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useState } from 'react';
+import { SplashScreen, Stack } from 'expo-router';
+import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
-import { ThemeProvider, useTheme } from '@/context/ThemeContext';
-import { SettingsProvider } from '@/context/SettingsContext';
+import { hymnService } from '../services/hymnService';
+import { buildIndex } from '../services/searchService';
+import { storageService } from '../services/storageService';
+import { LanguageProvider } from '../context/LanguageContext';
+import type { AppLanguage } from '../types/language';
+import { DEFAULT_SETTINGS } from '../types/settings';
+
+const corpus = require('../assets/data/hymns.json');
 
 SplashScreen.preventAutoHideAsync();
 
-function RootLayoutInner() {
-  const { colorScheme } = useTheme();
+export default function RootLayout() {
+  const [appReady, setAppReady] = useState(false);
+  const [initialLanguage, setInitialLanguage] = useState<AppLanguage>('en');
+
+  const [fontsLoaded, fontError] = useFonts({
+    // Uncomment when font files are added to assets/fonts/:
+    // 'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+    // 'Inter-Bold':    require('../assets/fonts/Inter-Bold.ttf'),
+    // 'Inter-Italic':  require('../assets/fonts/Inter-Italic.ttf'),
+  });
 
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (!fontsLoaded && !fontError) return;
 
-  return (
-    <>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen
-          name="(drawer)"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="hymn/[id]"
-          options={{ headerShown: false, animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="search"
-          options={{ headerShown: false, animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="about"
-          options={{ headerShown: false, animation: 'slide_from_right' }}
-        />
-      </Stack>
-    </>
-  );
-}
+    let cancelled = false;
 
-export default function RootLayout() {
+    void (async () => {
+      try {
+        hymnService.init(corpus);
+
+        const settings = await storageService.loadSettings();
+        if (cancelled) return;
+
+        const lang: AppLanguage =
+          (settings.language as AppLanguage) ?? DEFAULT_SETTINGS.language;
+
+        const hymns = hymnService.getAllHymns(lang);
+        buildIndex(hymns, lang);
+
+        const storedVersion = await storageService.getStoredCorpusVersion();
+        if (storedVersion !== corpus.version) {
+          await storageService.setStoredCorpusVersion(corpus.version as string);
+        }
+
+        if (cancelled) return;
+        setInitialLanguage(lang);
+        setAppReady(true);
+      } catch {
+        if (!cancelled) setAppReady(true);
+      } finally {
+        if (!cancelled) await SplashScreen.hideAsync();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fontsLoaded, fontError]);
+
+  if (!appReady) return null;
+
   return (
     <GestureHandlerRootView style={styles.root}>
-      <ThemeProvider>
-        <SettingsProvider>
-          <RootLayoutInner />
-        </SettingsProvider>
-      </ThemeProvider>
+      <LanguageProvider initialLanguage={initialLanguage}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="hymn/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="search" options={{ headerShown: false }} />
+          <Stack.Screen name="about" options={{ headerShown: false }} />
+          <Stack.Screen name="category/[name]" options={{ headerShown: false }} />
+        </Stack>
+      </LanguageProvider>
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
+  root: { flex: 1 },
 });

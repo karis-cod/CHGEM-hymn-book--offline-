@@ -1,26 +1,27 @@
 // FILE PATH: app/(tabs)/_layout.tsx
 
 import { Tabs } from 'expo-router';
-import { useTheme } from '@/context/ThemeContext';
+import { useColorScheme } from 'react-native';
+import { getThemeColours } from '../../constants/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function TabLayout() {
-  const { colors } = useTheme();
+  const scheme = useColorScheme() ?? 'dark';
+  const colours = getThemeColours(scheme === 'dark' ? 'dark' : 'light');
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.background.secondary,
-          borderTopColor: colors.border.default,
+          backgroundColor: colours.background.secondary,
+          borderTopColor: colours.border.default,
           height: 60,
         },
-        tabBarActiveTintColor: colors.accent.primary,
-        tabBarInactiveTintColor: colors.icon.default,
+        tabBarActiveTintColor: colours.accent.primary,
+        tabBarInactiveTintColor: colours.text.secondary,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontFamily: 'Inter-Regular',
           marginBottom: 4,
         },
       }}
@@ -57,7 +58,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color} />
+            <Ionicons name="settings-sharp" size={size} color={color} />
           ),
         }}
       />
