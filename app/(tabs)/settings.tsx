@@ -1,7 +1,21 @@
 // FILE PATH: app/(tabs)/settings.tsx
 // PURPOSE: Settings screen — theme, language, font size, offline badge.
+//
+// PHASE 4 CHANGES:
+//   - fontSize / showVerseNumbers / keepScreenOn now read from and write to
+//     SettingsContext (useSettings()) instead of local useState — these
+//     values are now shared with HymnReader, StanzaBlock, HymnListItem, etc.
+//   - Removed raw useColorScheme() — colours now come from useTheme(),
+//     which respects the manual Light/Dark/System override.
+//   - Added a Theme section: Light / Dark / System selector, persisted via
+//     ThemeContext.setThemeMode().
+//   - Added a live font-size preview line under the font size selector —
+//     it re-renders instantly as the user taps XS..XXL because it reads
+//     fontSize from the same shared SettingsContext.
+//   - persistSetting() helper removed — setters in SettingsContext now
+//     handle persistence themselves.
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Alert,
   Linking,
@@ -10,50 +24,47 @@ import {
   StyleSheet,
   Switch,
   View,
-  useColorScheme,
   StatusBar,
 } from 'react-native';
 
 import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { useSettings } from '../../context/SettingsContext';
 import { useRecents } from '../../hooks/useRecents';
-import { storageService } from '../../services/storageService';
 import OfflineBadge from '../../components/ui/OfflineBadge';
 import ThemedText from '../../components/ui/ThemedText';
-import { getThemeColours } from '../../constants/theme';
 import { SPACING, HEADER_HEIGHT, BORDER_RADIUS, TOUCH_TARGET_MIN } from '../../constants/layout';
 import { SUPPORTED_LANGUAGES } from '../../types/language';
-import { DEFAULT_SETTINGS } from '../../types/settings';
 import type { AppLanguage } from '../../types/language';
-import type { FontSizeStep } from '../../types/settings';
-
+import type { FontSizeStep, ThemeMode } from '../../types/settings';
 const APP_VERSION    = '1.0.0';
 const CORPUS_VERSION = '2025.2';
-const SUPPORT_EMAIL  = 'support@chgem.org';
+const SUPPORT_EMAIL  = 'chukwuebukaogu3@gmail.com';
 
 export default function SettingsScreen() {
   const { t, currentLanguage, setLanguage } = useLanguage();
-  const scheme = useColorScheme() ?? 'dark';
-  const colours = getThemeColours(scheme === 'dark' ? 'dark' : 'light');
+  const { colors, themeMode, setThemeMode } = useTheme();
+  const {
+    fontSize,
+    showVerseNumbers,
+    keepScreenOn,
+    setFontSize,
+    setShowVerseNumbers,
+    setKeepScreenOn,
+  } = useSettings();
   const { clearRecents } = useRecents();
-
-  const [fontSize, setFontSize] = useState<FontSizeStep>('md');
-  const [showVerseNumbers, setShowVerseNumbers] = useState(true);
-  const [keepScreenOn, setKeepScreenOn] = useState(false);
-
-  const persistSetting = useCallback(async (patch: Partial<typeof DEFAULT_SETTINGS>) => {
-    const current = await storageService.loadSettings();
-    await storageService.saveSettings({ ...current, ...patch });
-  }, []);
 
   const handleLanguageToggle = useCallback((lang: AppLanguage) => {
     setLanguage(lang);
-    void persistSetting({ language: lang });
-  }, [setLanguage, persistSetting]);
+  }, [setLanguage]);
 
   const handleFontSizeChange = useCallback((step: FontSizeStep) => {
     setFontSize(step);
-    void persistSetting({ fontSize: step });
-  }, [persistSetting]);
+  }, [setFontSize]);
+
+  const handleThemeChange = useCallback((mode: ThemeMode) => {
+    setThemeMode(mode);
+  }, [setThemeMode]);
 
   const handleClearRecents = useCallback(() => {
     Alert.alert(
@@ -82,24 +93,30 @@ export default function SettingsScreen() {
     { step: 'xxl', label: t('settings_font_xxl') },
   ];
 
+  const themeOptions: { mode: ThemeMode; label: string }[] = [
+    { mode: 'light',  label: t('settings_theme_light')  },
+    { mode: 'dark',   label: t('settings_theme_dark')   },
+    { mode: 'system', label: t('settings_theme_system') },
+  ];
+
   const rowStyle = useMemo(() => [
     styles.row,
-    { borderBottomColor: colours.border.default },
-  ], [colours]);
+    { borderBottomColor: colors.border.default },
+  ], [colors]);
 
   const offlineBadgeColours = useMemo(() => ({
-    background: colours.status.offline,
-    text:       colours.status.offlineText,
-    subtext:    colours.status.offlineText + 'CC',
-    dot:        colours.status.offlineText,
-  }), [colours]);
+    background: colors.status.offline,
+    text:       colors.status.offlineText,
+    subtext:    colors.status.offlineText + 'CC',
+    dot:        colors.status.offlineText,
+  }), [colors]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: colours.background.primary }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colours.background.header} />
+    <View style={[styles.screen, { backgroundColor: colors.background.primary }]}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background.header} />
 
-      <View style={[styles.banner, { backgroundColor: colours.background.header }]}>
-        <ThemedText variant="hymnTitle" colour={colours.text.onHeader} style={styles.bannerTitle}>
+      <View style={[styles.banner, { backgroundColor: colors.background.header }]}>
+        <ThemedText variant="hymnTitle" colour={colors.text.onHeader} style={styles.bannerTitle}>
           {t('screen_settings')}
         </ThemedText>
       </View>
@@ -108,15 +125,49 @@ export default function SettingsScreen() {
 
         <ThemedText
           variant="sectionHeader"
-          colour={colours.accent.secondary}
+          colour={colors.accent.secondary}
           style={styles.sectionHeader}
         >
           {t('settings_general')}
         </ThemedText>
 
+        {/* Theme */}
+        <View style={[styles.settingBlock, { backgroundColor: colors.background.secondary }]}>
+          <ThemedText variant="uiLabel" colour={colors.text.primary} style={styles.settingLabel}>
+            {t('settings_theme')}
+          </ThemedText>
+          <View style={styles.langRow}>
+            {themeOptions.map(({ mode, label }) => (
+              <Pressable
+                key={mode}
+                onPress={() => handleThemeChange(mode)}
+                style={({ pressed }) => [
+                  styles.langOption,
+                  {
+                    backgroundColor: themeMode === mode
+                      ? colors.accent.primary
+                      : colors.background.primary,
+                    borderColor: colors.accent.primary,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: themeMode === mode }}
+              >
+                <ThemedText
+                  variant="uiLabel"
+                  colour={themeMode === mode ? colors.text.onHeader : colors.accent.primary}
+                >
+                  {label}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         {/* Language */}
-        <View style={[styles.settingBlock, { backgroundColor: colours.background.secondary }]}>
-          <ThemedText variant="uiLabel" colour={colours.text.primary} style={styles.settingLabel}>
+        <View style={[styles.settingBlock, { backgroundColor: colors.background.secondary }]}>
+          <ThemedText variant="uiLabel" colour={colors.text.primary} style={styles.settingLabel}>
             {t('settings_language')}
           </ThemedText>
           <View style={styles.langRow}>
@@ -128,9 +179,9 @@ export default function SettingsScreen() {
                   styles.langOption,
                   {
                     backgroundColor: currentLanguage === code
-                      ? colours.accent.primary
-                      : colours.background.primary,
-                    borderColor: colours.accent.primary,
+                      ? colors.accent.primary
+                      : colors.background.primary,
+                    borderColor: colors.accent.primary,
                     opacity: pressed ? 0.8 : 1,
                   },
                 ]}
@@ -139,7 +190,7 @@ export default function SettingsScreen() {
               >
                 <ThemedText
                   variant="uiLabel"
-                  colour={currentLanguage === code ? colours.text.onHeader : colours.accent.primary}
+                  colour={currentLanguage === code ? colors.text.onHeader : colors.accent.primary}
                 >
                   {nativeLabel}
                 </ThemedText>
@@ -149,8 +200,8 @@ export default function SettingsScreen() {
         </View>
 
         {/* Font Size */}
-        <View style={[styles.settingBlock, { backgroundColor: colours.background.secondary }]}>
-          <ThemedText variant="uiLabel" colour={colours.text.primary} style={styles.settingLabel}>
+        <View style={[styles.settingBlock, { backgroundColor: colors.background.secondary }]}>
+          <ThemedText variant="uiLabel" colour={colors.text.primary} style={styles.settingLabel}>
             {t('settings_font_size')}
           </ThemedText>
           <View style={styles.fontSizeGrid}>
@@ -162,9 +213,9 @@ export default function SettingsScreen() {
                   styles.fontOption,
                   {
                     backgroundColor: fontSize === step
-                      ? colours.accent.primary
-                      : colours.background.primary,
-                    borderColor: colours.border.default,
+                      ? colors.accent.primary
+                      : colors.background.primary,
+                    borderColor: colors.border.default,
                     opacity: pressed ? 0.8 : 1,
                   },
                 ]}
@@ -174,38 +225,51 @@ export default function SettingsScreen() {
               >
                 <ThemedText
                   variant="uiLabel"
-                  colour={fontSize === step ? colours.text.onHeader : colours.text.secondary}
+                  colour={fontSize === step ? colors.text.onHeader : colors.text.secondary}
                 >
                   {step.toUpperCase()}
                 </ThemedText>
               </Pressable>
             ))}
           </View>
+
+          {/* Live preview — reads fontSize from the same SettingsContext,
+              so it scales instantly as the user taps XS..XXL above. */}
+          <View
+            style={[
+              styles.previewBox,
+              { backgroundColor: colors.background.primary, borderColor: colors.border.default },
+            ]}
+          >
+            <ThemedText variant="stanzaBody" colour={colors.text.primary}>
+              {t('settings_font_preview')}
+            </ThemedText>
+          </View>
         </View>
 
         {/* Show Verse Numbers */}
         <View style={rowStyle}>
-          <ThemedText variant="uiLabel" colour={colours.text.primary} style={styles.rowText}>
+          <ThemedText variant="uiLabel" colour={colors.text.primary} style={styles.rowText}>
             {t('settings_show_verse_nums')}
           </ThemedText>
           <Switch
             value={showVerseNumbers}
-            onValueChange={(val) => { setShowVerseNumbers(val); void persistSetting({ showVerseNumbers: val }); }}
-            trackColor={{ false: colours.border.default, true: colours.accent.secondary }}
-            thumbColor={colours.text.onHeader}
+            onValueChange={(val) => setShowVerseNumbers(val)}
+            trackColor={{ false: colors.border.default, true: colors.accent.secondary }}
+            thumbColor={colors.text.onHeader}
           />
         </View>
 
         {/* Keep Screen On */}
         <View style={rowStyle}>
-          <ThemedText variant="uiLabel" colour={colours.text.primary} style={styles.rowText}>
+          <ThemedText variant="uiLabel" colour={colors.text.primary} style={styles.rowText}>
             {t('settings_keep_screen_on')}
           </ThemedText>
           <Switch
             value={keepScreenOn}
-            onValueChange={(val) => { setKeepScreenOn(val); void persistSetting({ keepScreenOn: val }); }}
-            trackColor={{ false: colours.border.default, true: colours.accent.secondary }}
-            thumbColor={colours.text.onHeader}
+            onValueChange={(val) => setKeepScreenOn(val)}
+            trackColor={{ false: colors.border.default, true: colors.accent.secondary }}
+            thumbColor={colors.text.onHeader}
           />
         </View>
 
@@ -216,10 +280,10 @@ export default function SettingsScreen() {
           accessibilityRole="button"
         >
           <View style={styles.rowText}>
-            <ThemedText variant="uiLabel" colour={colours.text.primary}>
+            <ThemedText variant="uiLabel" colour={colors.text.primary}>
               {t('settings_clear_recents')}
             </ThemedText>
-            <ThemedText variant="caption" colour={colours.text.secondary}>
+            <ThemedText variant="caption" colour={colors.text.secondary}>
               {t('settings_clear_recents_sub')}
             </ThemedText>
           </View>
@@ -233,20 +297,20 @@ export default function SettingsScreen() {
 
         <ThemedText
           variant="sectionHeader"
-          colour={colours.accent.secondary}
+          colour={colors.accent.secondary}
           style={[styles.sectionHeader, styles.sectionHeaderSpaced]}
         >
           {t('settings_support')}
         </ThemedText>
 
-        <View style={[styles.settingBlock, { backgroundColor: colours.background.secondary }]}>
+        <View style={[styles.settingBlock, { backgroundColor: colors.background.secondary }]}>
           <View style={rowStyle}>
-            <ThemedText variant="uiLabel" colour={colours.text.primary}>{t('settings_app_version')}</ThemedText>
-            <ThemedText variant="uiLabel" colour={colours.text.secondary}>{APP_VERSION}</ThemedText>
+            <ThemedText variant="uiLabel" colour={colors.text.primary}>{t('settings_app_version')}</ThemedText>
+            <ThemedText variant="uiLabel" colour={colors.text.secondary}>{APP_VERSION}</ThemedText>
           </View>
           <View style={[rowStyle, styles.lastRow]}>
-            <ThemedText variant="uiLabel" colour={colours.text.primary}>{t('settings_corpus_version')}</ThemedText>
-            <ThemedText variant="uiLabel" colour={colours.text.secondary}>{CORPUS_VERSION}</ThemedText>
+            <ThemedText variant="uiLabel" colour={colors.text.primary}>{t('settings_corpus_version')}</ThemedText>
+            <ThemedText variant="uiLabel" colour={colors.text.secondary}>{CORPUS_VERSION}</ThemedText>
           </View>
         </View>
 
@@ -254,11 +318,11 @@ export default function SettingsScreen() {
           onPress={handleSendReport}
           style={({ pressed }) => [
             styles.reportButton,
-            { backgroundColor: colours.accent.primary, opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: colors.accent.primary, opacity: pressed ? 0.8 : 1 },
           ]}
           accessibilityRole="button"
         >
-          <ThemedText variant="uiLabel" colour={colours.text.onHeader}>
+          <ThemedText variant="uiLabel" colour={colors.text.onHeader}>
             {t('action_send_report')}
           </ThemedText>
         </Pressable>
@@ -287,6 +351,7 @@ const styles = StyleSheet.create({
   langOption: { flex: 1, minHeight: TOUCH_TARGET_MIN, borderWidth: 1.5, borderRadius: BORDER_RADIUS.md, alignItems: 'center', justifyContent: 'center' },
   fontSizeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.xs },
   fontOption: { minWidth: TOUCH_TARGET_MIN, minHeight: TOUCH_TARGET_MIN - 4, borderWidth: 1, borderRadius: BORDER_RADIUS.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.sm },
+  previewBox: { marginTop: SPACING.sm, borderWidth: 1, borderRadius: BORDER_RADIUS.sm, padding: SPACING.sm },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, minHeight: TOUCH_TARGET_MIN, borderBottomWidth: StyleSheet.hairlineWidth },
   lastRow: { borderBottomWidth: 0 },
   rowText: { flex: 1, marginRight: SPACING.md },

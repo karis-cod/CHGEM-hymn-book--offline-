@@ -102,6 +102,7 @@ export interface Translations {
   settings_font_lg:          string;
   settings_font_xl:          string;
   settings_font_xxl:         string;
+  settings_font_preview: string;
   settings_show_verse_nums:  string;
   settings_keep_screen_on:   string;
   settings_haptic_feedback:  string;

@@ -60,6 +60,7 @@ export const yo: Translations = {
   action_send_report:     'Fi Ìjábọ̀ Ránṣẹ́',
   action_back:            'Padà',
 
+
   // ─── Empty States ─────────────────────────────────────────────────────────
   empty_search_title:          'A kò rí orin kankan',
   empty_search_body:           'Orin kan kò báramu àkọsọ rẹ. Gbìyànjú nọ́mbà tàbí ọ̀rọ̀ míì.',
@@ -101,6 +102,7 @@ export const yo: Translations = {
   settings_report_issue:     'Ròyìn Àṣìṣe',
   settings_app_version:      'Ẹ̀dà App',
   settings_corpus_version:   'Ẹ̀dà Dátà Orin',
+  settings_font_preview: 'Ìgbẹ́kẹ̀lé Rẹ tóbi, Ọlọrun Baba mi!',
 
   // ─── Language Switcher ────────────────────────────────────────────────────
   language_english:  'Gẹ̀ẹ́sì',
@@ -118,4 +120,5 @@ export const yo: Translations = {
   about_body:       'Ìjọ Ìrètí Olùgbàlà Ọlọ́run',
   about_app_ver:    'Ẹ̀dà App',
   about_corpus_ver: 'Ẹ̀dà Dátà Orin',
+
 };

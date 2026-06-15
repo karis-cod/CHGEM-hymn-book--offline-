@@ -20,6 +20,7 @@ export const en: Translations = {
   nav_favourite:   'Favourite',
   nav_settings:    'Settings',
 
+
   // ─── Screen Titles ────────────────────────────────────────────────────────
   screen_index:       'Index',
   screen_index_sub:   'Numerical',
@@ -91,6 +92,7 @@ export const en: Translations = {
   settings_font_lg:          'LG — Large',
   settings_font_xl:          'XL — Extra Large',
   settings_font_xxl:         'XXL — Maximum',
+  settings_font_preview: 'Great is Thy faithfulness, O God my Father!',
   settings_show_verse_nums:  'Show Verse Numbers',
   settings_keep_screen_on:   'Keep Screen On',
   settings_haptic_feedback:  'Haptic Feedback',
@@ -119,4 +121,7 @@ export const en: Translations = {
   about_body:       'Christ\'s Hope of Glory Evangelical Mission',
   about_app_ver:    'App Version',
   about_corpus_ver: 'Corpus Version',
+  
+
 };
+

@@ -1,17 +1,31 @@
 // FILE PATH: app/_layout.tsx
 // PURPOSE: Root layout — wires all contexts, runs startup sequence, controls splash.
+//
+// PHASE 4 CHANGES:
+//   - Added SafeAreaProvider (required for useSafeAreaInsets in (tabs)/_layout.tsx).
+//   - Added ThemeProvider, SettingsProvider, FavouritesProvider, RecentsProvider.
+//   - The settings object already loaded during startup is now reused to seed
+//     ThemeProvider.initialThemeMode and SettingsProvider.initialSettings —
+//     no second AsyncStorage read, no flash of default values.
 
 import { useEffect, useState } from 'react';
 import { SplashScreen, Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
+
 import { hymnService } from '../services/hymnService';
 import { buildIndex } from '../services/searchService';
 import { storageService } from '../services/storageService';
 import { LanguageProvider } from '../context/LanguageContext';
+import { ThemeProvider } from '../context/ThemeContext';
+import { SettingsProvider } from '../context/SettingsContext';
+import { FavouritesProvider } from '../context/FavouritesContext';
+import { RecentsProvider } from '../context/RecentsContext';
 import type { AppLanguage } from '../types/language';
 import { DEFAULT_SETTINGS } from '../types/settings';
+import type { UserSettings } from '../types/settings';
 
 const corpus = require('../assets/data/hymns.json');
 
@@ -20,6 +34,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
   const [initialLanguage, setInitialLanguage] = useState<AppLanguage>('en');
+  const [initialSettings, setInitialSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
 
   const [fontsLoaded, fontError] = useFonts({
     // Uncomment when font files are added to assets/fonts/:
@@ -53,6 +68,7 @@ export default function RootLayout() {
 
         if (cancelled) return;
         setInitialLanguage(lang);
+        setInitialSettings(settings);
         setAppReady(true);
       } catch {
         if (!cancelled) setAppReady(true);
@@ -70,15 +86,25 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <LanguageProvider initialLanguage={initialLanguage}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="hymn/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="search" options={{ headerShown: false }} />
-          <Stack.Screen name="about" options={{ headerShown: false }} />
-          <Stack.Screen name="category/[name]" options={{ headerShown: false }} />
-        </Stack>
-      </LanguageProvider>
+      <SafeAreaProvider>
+        <LanguageProvider initialLanguage={initialLanguage}>
+          <ThemeProvider initialThemeMode={initialSettings.theme}>
+            <SettingsProvider initialSettings={initialSettings}>
+              <FavouritesProvider>
+                <RecentsProvider>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="hymn/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="search" options={{ headerShown: false }} />
+                    <Stack.Screen name="about" options={{ headerShown: false }} />
+                    <Stack.Screen name="category/[name]" options={{ headerShown: false }} />
+                  </Stack>
+                </RecentsProvider>
+              </FavouritesProvider>
+            </SettingsProvider>
+          </ThemeProvider>
+        </LanguageProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

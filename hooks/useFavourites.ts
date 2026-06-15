@@ -1,4 +1,11 @@
-// FILE PATH: hooks/useFavourites.ts
+
+export { useFavourites } from '../context/FavouritesContext';
+export type { FavouritesContextValue } from '../context/FavouritesContext';
+
+
+
+
+/* // FILE PATH: hooks/useFavourites.ts
 // PURPOSE: Optimistic favourites CRUD with AsyncStorage persistence.
 // PRD Reference: Section 13.2 (hook contract), Section 7 (US-04).
 //
@@ -13,6 +20,22 @@
 // On write failure: revert optimistic state.
 // Limit: at 100 items, toggleFavourite (add) is a no-op — caller shows message.
 // On load: filter favourites against hymnService to remove stale IDs silently.
+
+
+// PHASE 4 CHANGE: Favourites state moved to context/FavouritesContext.tsx
+// so that favourites are shared across all screens (fixes the bug where
+// clearFavourites() on one screen did not update heart icons on another).
+//
+// Any existing `import { useFavourites } from '../../hooks/useFavourites'`
+// continues to work unchanged — it now returns the shared context state.
+// FavouritesProvider must wrap the app (added in app/_layout.tsx).
+
+// FILE PATH: hooks/useFavourites.ts
+// Backward-compatible shim — Phase 4 moved state to context/FavouritesContext.tsx
+// All existing imports from this path continue to work unchanged.
+// FILE PATH: hooks/useFavourites.ts
+// Backward-compatible shim — Phase 4 moved state to context/FavouritesContext.tsx
+export type { FavouritesContextValue } from '../context/FavouritesContext';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -107,3 +130,4 @@ export function useFavourites(): UseFavouritesReturn {
     isAtLimit: favourites.length >= MAX_FAVOURITES,
   };
 }
+ */

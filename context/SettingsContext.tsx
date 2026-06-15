@@ -1,9 +1,21 @@
 // FILE PATH: context/SettingsContext.tsx
-// PURPOSE: Distributes font size, language, and UI preferences.
-// AsyncStorage persistence added in Phase 4.
+// PURPOSE: Distributes font size and UI preferences. Persists to AsyncStorage.
+//
+// PHASE 4 CHANGES:
+//   - Fixed FontSizeStep import: was '@/constants/typography' (does not exist),
+//     now correctly imports from '../types/settings' (canonical source,
+//     includes FONT_SIZE_SCALES).
+//   - SettingsProvider now accepts `initialSettings` (loaded once at startup
+//     in app/_layout.tsx) so the correct values are available on first render
+//     — no flash of default 'md' before AsyncStorage resolves.
+//   - All setters now persist to AsyncStorage via storageService.saveSettings(),
+//     merging with the current stored object so no other fields are lost.
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { FontSizeStep } from '@/constants/typography';
+import React, { createContext, useCallback, useContext, useState } from 'react';
+
+import { storageService } from '../services/storageService';
+import { DEFAULT_SETTINGS } from '../types/settings';
+import type { FontSizeStep, UserSettings } from '../types/settings';
 
 interface SettingsContextValue {
   fontSize: FontSizeStep;
@@ -22,35 +34,51 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 interface SettingsProviderProps {
   children: React.ReactNode;
+  /** Loaded once in app/_layout.tsx via storageService.loadSettings() before splash hides. */
+  initialSettings?: UserSettings;
 }
 
-export function SettingsProvider({ children }: SettingsProviderProps) {
-  const [fontSize, setFontSizeState] = useState<FontSizeStep>('md');
-  const [language, setLanguageState] = useState<string>('en');
-  const [showVerseNumbers, setShowVerseNumbersState] = useState<boolean>(true);
-  const [keepScreenOn, setKeepScreenOnState] = useState<boolean>(false);
-  const [hapticFeedback, setHapticFeedbackState] = useState<boolean>(true);
+export function SettingsProvider({ children, initialSettings }: SettingsProviderProps) {
+  const base = initialSettings ?? DEFAULT_SETTINGS;
+
+  const [fontSize, setFontSizeState] = useState<FontSizeStep>(base.fontSize);
+  const [language, setLanguageState] = useState<string>(base.language);
+  const [showVerseNumbers, setShowVerseNumbersState] = useState<boolean>(base.showVerseNumbers);
+  const [keepScreenOn, setKeepScreenOnState] = useState<boolean>(base.keepScreenOn);
+  const [hapticFeedback, setHapticFeedbackState] = useState<boolean>(base.hapticFeedback);
+
+  /** Merge a partial change into the stored settings object — fire and forget. */
+  const persist = useCallback((patch: Partial<UserSettings>) => {
+    void (async () => {
+      const current = await storageService.loadSettings();
+      await storageService.saveSettings({ ...current, ...patch });
+    })();
+  }, []);
 
   const setFontSize = useCallback((size: FontSizeStep) => {
     setFontSizeState(size);
-    // AsyncStorage persistence added in Phase 4
-  }, []);
+    persist({ fontSize: size });
+  }, [persist]);
 
   const setLanguage = useCallback((lang: string) => {
     setLanguageState(lang);
-  }, []);
+    persist({ language: lang as UserSettings['language'] });
+  }, [persist]);
 
   const setShowVerseNumbers = useCallback((show: boolean) => {
     setShowVerseNumbersState(show);
-  }, []);
+    persist({ showVerseNumbers: show });
+  }, [persist]);
 
   const setKeepScreenOn = useCallback((keep: boolean) => {
     setKeepScreenOnState(keep);
-  }, []);
+    persist({ keepScreenOn: keep });
+  }, [persist]);
 
   const setHapticFeedback = useCallback((enabled: boolean) => {
     setHapticFeedbackState(enabled);
-  }, []);
+    persist({ hapticFeedback: enabled });
+  }, [persist]);
 
   const value: SettingsContextValue = {
     fontSize,

@@ -81,8 +81,3 @@ function getVariantStyle(variant: ThemedTextVariant): TextStyle {
       return { fontSize: scale.stanzaBody, fontWeight: '400', lineHeight: scale.stanzaBody * 1.5 };
   }
 }
-
-// Suppress unused variable — StyleSheet kept for future use
-const _styles = StyleSheet.create({
-  base: { includeFontPadding: false },
-});

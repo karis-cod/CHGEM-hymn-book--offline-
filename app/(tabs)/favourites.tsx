@@ -1,37 +1,31 @@
 // FILE PATH: app/(tabs)/favourites.tsx
-// PURPOSE: Saved/bookmarked hymns screen.
-
 import React, { useCallback, useMemo } from 'react';
 import {
   FlatList,
   Pressable,
   StyleSheet,
   View,
-  useColorScheme,
   StatusBar,
 } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+
 import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { useSettings } from '../../context/SettingsContext';
 import { useFavourites } from '../../hooks/useFavourites';
 import { hymnService } from '../../services/hymnService';
 import HymnListItem from '../../components/hymn/HymnListItem';
 import EmptyState from '../../components/ui/EmptyState';
 import ThemedText from '../../components/ui/ThemedText';
-import { getThemeColours } from '../../constants/theme';
-import {
-  SPACING,
-  HEADER_HEIGHT,
-  LIST_ITEM_HEIGHT,
-  TOUCH_TARGET_MIN,
-} from '../../constants/layout';
+import { SPACING, HEADER_HEIGHT, LIST_ITEM_HEIGHT, TOUCH_TARGET_MIN } from '../../constants/layout';
 import type { HymnRecord } from '../../types/hymn';
 
 export default function FavouritesScreen() {
   const { t, currentLanguage } = useLanguage();
-  const scheme = useColorScheme() ?? 'dark';
-  const colours = getThemeColours(scheme === 'dark' ? 'dark' : 'light');
-  const { favourites, isFavourite, toggleFavourite, clearFavourites } = useFavourites();
+  const { colors } = useTheme();
+  const { fontSize } = useSettings();
+  const { favourites, toggleFavourite, clearFavourites } = useFavourites();
 
   const hymnList: HymnRecord[] = useMemo(() => {
     return favourites
@@ -59,34 +53,29 @@ export default function FavouritesScreen() {
   );
 
   const emptyColours = useMemo(() => ({
-    textPrimary:   colours.text.primary,
-    textSecondary: colours.text.secondary,
-    accentPrimary: colours.accent.primary,
-    border:        colours.border.default,
-  }), [colours]);
+    textPrimary:   colors.text.primary,
+    textSecondary: colors.text.secondary,
+    accentPrimary: colors.accent.primary,
+    border:        colors.border.default,
+  }), [colors]);
 
-  // Match exactly what HymnListItem expects
   const listItemColours = useMemo(() => ({
-    background:           colours.background.secondary,
-    border:               colours.border.default,
-    text:                 colours.text.primary,
-    meta:                 colours.text.secondary,
-    numberBadgeBackground: colours.accent.primary,
-    numberBadgeText:      colours.text.onHeader,
-    favouriteActive:      colours.accent.secondary,
-    favouriteInactive:    colours.text.secondary,
-  }), [colours]);
+    background:            colors.background.secondary,
+    border:                colors.border.default,
+    text:                  colors.text.primary,
+    meta:                  colors.text.secondary,
+    numberBadgeBackground: colors.accent.primary,
+    numberBadgeText:       colors.text.onHeader,
+    favouriteActive:       colors.accent.secondary,
+    favouriteInactive:     colors.text.secondary,
+  }), [colors]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: colours.background.primary }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colours.background.header} />
+    <View style={[styles.screen, { backgroundColor: colors.background.primary }]}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background.header} />
 
-      <View style={[styles.banner, { backgroundColor: colours.background.header }]}>
-        <ThemedText
-          variant="hymnTitle"
-          colour={colours.text.onHeader}
-          style={styles.bannerTitle}
-        >
+      <View style={[styles.banner, { backgroundColor: colors.background.header }]}>
+        <ThemedText variant="hymnTitle" colour={colors.text.onHeader} style={styles.bannerTitle}>
           {t('screen_favourite')}
         </ThemedText>
         {hymnList.length > 0 && (
@@ -97,11 +86,7 @@ export default function FavouritesScreen() {
             accessibilityLabel={t('action_clear_all')}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons
-              name="trash-outline"
-              size={20}
-              color={colours.text.onHeader}
-            />
+            <Ionicons name="trash-outline" size={20} color={colors.text.onHeader} />
           </Pressable>
         )}
       </View>
@@ -121,15 +106,15 @@ export default function FavouritesScreen() {
           keyExtractor={keyExtractor}
           getItemLayout={getItemLayout}
           renderItem={({ item }) => (
-            <HymnListItem
-             hymn={item}
-             isFavourite={isFavourite(item.id)}
-             onPress={handleHymnPress}
-             onFavouriteToggle={handleFavouriteToggle}
-             fontSize="md"
-             colours={listItemColours}
-           />
-          )}
+  <HymnListItem
+    hymn={item}
+    isFavourite={favourites.includes(item.id)}
+    onPress={handleHymnPress}
+    onFavouriteToggle={handleFavouriteToggle}
+    fontSize={fontSize}
+    colours={listItemColours}
+  />
+)}
           windowSize={10}
           removeClippedSubviews
           initialNumToRender={15}

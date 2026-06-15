@@ -1,4 +1,15 @@
-// FILE PATH: hooks/useRecents.ts
+
+
+export { useRecents } from '../context/RecentsContext';
+export type { RecentsContextValue } from '../context/RecentsContext';
+
+
+
+/* 
+
+
+
+
 // PURPOSE: Recent hymns list — last 20 opened, newest first, deduplicated.
 // PRD Reference: Section 13.2 (useRecents hook), Section 7 (US-10).
 //
@@ -6,6 +17,22 @@
 //   - addRecent(id): prepend to list, remove duplicate if present, trim to 20
 //   - Persists across app restarts via AsyncStorage
 //   - clearRecents(): removes all recents
+
+
+
+//
+// PHASE 4 CHANGE: Recents state moved to context/RecentsContext.tsx
+// so that addRecent() called from hymn/[id].tsx is visible on the
+// Recents tab without re-fetching (fixes "recents not populating" bug).
+//
+// Any existing `import { useRecents } from '../../hooks/useRecents'`
+// continues to work unchanged — it now returns the shared context state.
+// RecentsProvider must wrap the app (added in app/_layout.tsx).
+
+// FILE PATH: hooks/useRecents.ts
+// Backward-compatible shim — Phase 4 moved state to context/RecentsContext.tsx
+export { useRecents } from '../context/RecentsContext';
+export type { RecentsContextValue } from '../context/RecentsContext';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -60,3 +87,4 @@ export function useRecents(): UseRecentsReturn {
 
   return { recents, addRecent, clearRecents, isLoading };
 }
+ */

@@ -10,13 +10,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'chgem-hymnbook',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
+  icon: './assets/app-icon.png',
   userInterfaceStyle: 'automatic',
   splash: {
-    image: './assets/splash-icon.png',
-    resizeMode: 'contain',
-    backgroundColor: '#1A3C5E',
-  },
+  image: './assets/splash-icon.jpg',
+  resizeMode: 'cover',
+  backgroundColor: '#0A1F44',
+},
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'com.chgem.hymnbook',
@@ -24,7 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: 'com.chgem.hymnbook',
     adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
+      foregroundImage: './assets/app-icon.png',
       backgroundColor: '#1A3C5E',
     },
     permissions: [],
@@ -33,13 +33,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-router',
     'expo-font',
     [
-      'expo-splash-screen',
-      {
-        backgroundColor: '#1A3C5E',
-        image: './assets/splash-icon.png',
-        resizeMode: 'contain',
-      },
-    ],
+  'expo-splash-screen',
+  {
+    backgroundColor: '#0A1F44',
+    image: './assets/splash-icon.jpg',
+    resizeMode: 'cover',
+  },
+],
   ],
   extra: {
     corpusVersion: '2025.1',
